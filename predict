@@ -1,0 +1,14 @@
+#PREDICT FROM OPTIMISED MODEL
+
+#Newdata will be an input table with the 'forward testing' data in.
+
+newdata<-read.csv()#Load data from local storage or bigquery, or use previously subsetted 'forward data' which will be the most recent 1/3 of the available data.
+#In the example below the actual outcome is listed in a column called outcome
+
+newdata$result<-NA
+for(i in (1:nrow(newdata)){
+ pred_dat<-predict(best_model,new_data=newdata[,i])
+ newdata$result[i]<-ifelse(pred_dat$==newdata$outcome,1,0)
+}
+
+#Calculate accuracy outcome measures here and push to user interface
