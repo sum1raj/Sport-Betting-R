@@ -1,0 +1,19 @@
+#AUTOMATE SIMPLIFYING A GLM USING glmulti FUNCTION
+
+library(rJava)
+library(glmulti)
+
+model<- #define formula here e.g. score~team+position+x
+
+simple_model<-glmulti(model,data = data, crit   = aic, level  = 2, method = "h", family = binomial, fitfunction = glm,  confsetsize = 100)   # Keep 100 best models
+
+#level is 2 if including interactions. Family will need updating depending on the response variable.
+#If will not run with method= "h" (exhaustive), use method= "g" (genetic algorithm).
+
+#OR TO SIMPLIFY A MULTINOMIAL MODEL BUILT WITH NNET:
+
+simple_model <- glmulti(model, data = data, level  = 2, method = "h", fitfunction = multinom)
+
+#EXTRACT BEST MODEL AND TEST
+
+best_model<-simple_model[1,1]
