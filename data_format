@@ -1,0 +1,41 @@
+data_format<-function(sport,filetype,years){
+  years<-as.numeric(years)
+
+  if(sport=="MLB"){
+    #The MLB team table has data for the same game over 2 lines. The following code reformats that so we end up with a single row
+    #for each game, combining the player and team variables we need (plus more).
+    for(i in 1:length(years)){
+      print(years[i])
+         myCols <- as.character(read_excel(paste0("MLB-",years[i],"-Player-BoxScore-Dataset.xlsx"), skip=1,n_max = 1, col_names = FALSE))
+      df1<-data.frame(read_excel(paste0("MLB-",years[i],"-Player-BoxScore-Dataset.xlsx"),skip=3,sheet=paste0(years[i],"-MLB-PLAYER"),na=" ",guess_max=1000,col_names=myCols))
+      print("m")
+      if(!exists("dfp")){
+        dfp<-df1
+      }else{
+        dfp<-rbind(dfp,df1)
+      }
+      print("n")
+      myCols2 <- as.character(read_excel(paste0(years[i],"-MLB_Box_Score_Team-Stats.xlsx"),
+                                         skip=1,n_max = 1, col_names = FALSE))
+     df2<-data.frame(read_excel(paste0(years[i],"-MLB_Box_Score_Team-Stats.xlsx"),skip=3,
+                                  sheet=paste0(years[i],"-MLB-TEAM"),
+                                na=" ",guess_max=1000,col_names=myCols2))
+    df2a<-df2[c(TRUE,FALSE),]#This captures odd rows only
+      df2b<-df2[!c(TRUE,FALSE),]#This captures even rows only
+      print(01)
+      df2c<-merge(df2a[,c(2,37:39,83:92)],df2b[,c(2,37:39,83:92)],by="GAME.ID",all.x=TRUE)
+      print(head(df2c))
+      print("done")
+      if(!exists("df20")){
+        df20<-df2c
+      }else{
+         df20<-rbind(df20,df2c)
+      }
+print(03)
+    }#close year loop
+
+  }else if(sport=="MBA"){
+  }else{
+  }  #close sport loop
+rm(df)
+}
