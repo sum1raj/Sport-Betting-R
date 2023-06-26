@@ -1,42 +1,98 @@
-data_format<-function(sport,filetype,years){
+data_format<-function(sport,years){
   years<-as.numeric(years)
 
   if(sport=="MLB"){
-    #The MLB team table has data for the same game over 2 lines. The following code reformats that so we end up with a single row
+     #The MLB team table has data for the same game over 2 lines. The following code reformats that so we end up with a single row
     #for each game, combining the player and team variables we need (plus more).
     #Pre-2020 data spreadsheet formats varied from 2020 onwards, adjustment is included for that
-    for(i in 1:length(years)){
-      print(years[i])
-         myCols <- as.character(read_excel(paste0("MLB-",years[i],"-Player-BoxScore-Dataset.xlsx"), skip=1,n_max = 1, col_names = FALSE))
-      df1<-data.frame(read_excel(paste0("MLB-",years[i],"-Player-BoxScore-Dataset.xlsx"),skip=3,sheet=paste0(years[i],"-MLB-PLAYER"),na=" ",guess_max=1000,col_names=myCols))
-      print("m")
-      if(!exists("dfp")){
+
+    for(i in 1:length(years[years<2020])){
+     myCols <- as.character(read_excel(paste0("MLB-",years[i],"-Player-BoxScore-Dataset.xlsx"), skip=1,n_max = 1, col_names = FALSE))
+     df1<-data.frame(read_excel(paste0("MLB-",years[i],"-Player-BoxScore-Dataset.xlsx"),skip=3,sheet=paste0(years[i],"-MLB-PLAYER"),na=" ",guess_max=1000,col_names=myCols))
+     if(!exists("dfp")){
         dfp<-df1
       }else{
         dfp<-rbind(dfp,df1)
       }
-      print("n")
       myCols2 <- as.character(read_excel(paste0(years[i],"-MLB_Box_Score_Team-Stats.xlsx"),
                                          skip=1,n_max = 1, col_names = FALSE))
-     df2<-data.frame(read_excel(paste0(years[i],"-MLB_Box_Score_Team-Stats.xlsx"),skip=3,
+      df2<-data.frame(read_excel(paste0(years[i],"-MLB_Box_Score_Team-Stats.xlsx"),skip=3,
                                   sheet=paste0(years[i],"-MLB-TEAM"),
                                 na=" ",guess_max=1000,col_names=myCols2))
-    df2a<-df2[c(TRUE,FALSE),]#This captures odd rows only
+      df2a<-df2[c(TRUE,FALSE),]#This captures odd rows only
       df2b<-df2[!c(TRUE,FALSE),]#This captures even rows only
-      print(01)
-      df2c<-merge(df2a[,c(2,37:39,83:92)],df2b[,c(2,37:39,83:92)],by="GAME.ID",all.x=TRUE)
-      print(head(df2c))
-      print("done")
+      df2c<-merge(df2a[,c(2,83,90:92)],df2b[,c(2,83,90:92)],by="GAME.ID",all.x=TRUE)
+
       if(!exists("df20")){
-        df20<-df2c
+         df20<-df2c
       }else{
          df20<-rbind(df20,df2c)
       }
-print(03)
     }#close year loop
+
+    for(i in 1:length(years[years>=2020])){
+      invisible( myCols <- as.character(read_excel(paste0("MLB-",years[i],"-Player-BoxScore-Dataset.xlsx"), skip=1,n_max = 1, col_names = FALSE)))
+      invisible( df1<-data.frame(read_excel(paste0("MLB-",years[i],"-Player-BoxScore-Dataset.xlsx"),skip=3,sheet=paste0(years[i],"-MLB-PLAYER"),na=" ",guess_max=1000,col_names=myCols)))
+      if(!exists("dfq")){
+        dfq<-df1
+      }else{
+        dfq<-rbind(dfq,df1)
+      }
+      myCols2 <- as.character(read_excel(paste0(years[i],"-MLB_Box_Score_Team-Stats.xlsx"),
+                                         skip=1,n_max = 1, col_names = FALSE))
+
+      df2<-data.frame(read_excel(paste0(years[i],"-MLB_Box_Score_Team-Stats.xlsx"),skip=3,
+                                 sheet=paste0(years[i],"-MLB-TEAM"),
+                                 na=" ",guess_max=1000,col_names=myCols2))
+      df2a<-df2[c(TRUE,FALSE),]#This captures odd rows only
+      df2b<-df2[!c(TRUE,FALSE),]#This captures even rows only- RENAME THESE
+      df2c<-merge(df2a[,c(2,83,90:92)],df2b[,c(2,83,90:92)],by="GAME.ID",all.x=TRUE)
+
+      if(!exists("df21")){
+         df21<-df2c
+      }else{
+        df21<-rbind(df21,df2c)
+      }
+     }#close year loop
+  teams<-rbind(df20,df21)
+  players<-rbind(dfp,dfq)
+
+  pitchers<-merge(players[,c(1:9,31:54)],teams,by="GAME.ID",all.x=TRUE)
+  pitchers<-pitchers[!is.na(pitchers$STARTING..PITCHER),]
+  pitchers$SV<-ifelse(pitchers$SV==1,1,0)
+  pitchers$SV<-ifelse(is.na(pitchers$SV),0,pitchers$SV)
+  pitchers$W<-ifelse(pitchers$W==1,1,0)
+  pitchers$W<-ifelse(is.na(pitchers$W),0,pitchers$W)
+  pitchers$L<-ifelse(pitchers$L==1,1,0)
+  pitchers$L<-ifelse(is.na(pitchers$L),0,pitchers$L)
+  for(i in 1:ncol(pitchers)){
+    if(i %in% c(12:20,24:34,36,38,40)){
+      pitchers[ , i] <- as.numeric(pitchers[ , i])
+    }
+    if(i %in% c(1:2,4:11,21:22,25,27:29,35,37,39,41)){
+      pitchers[ , i] <- as.factor(pitchers[ , i])
+    }
+  }
+  pitchers<<-pitchers
+
+  batters<<-merge(players[,c(1:30)],teams,by="GAME.ID",all.x=TRUE)
+  batters<-batters[!is.na(batters$AVG),]
+  for(i in 1:ncol(batters)){
+    if(i %in% c(11:31,33,35,37)){
+       batters[ , i] <- as.numeric(batters[ , i])
+    }
+    if(i %in% c(1:2,4:10,32,34,36,38)){
+      batters[ , i] <- as.factor(batters[ , i])
+    }
+  }
+
+  print("pitchers:")
+  print(summary(pitchers))
+  print("batters:")
+  print(summary(batters))
 
   }else if(sport=="MBA"){
   }else{
+    print("Selected sport not recognised- check spelling and case or ask moderator to add new options to data_format function")
   }  #close sport loop
-rm(df)
-}
+}#close function
