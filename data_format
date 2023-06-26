@@ -4,6 +4,7 @@ data_format<-function(sport,filetype,years){
   if(sport=="MLB"){
     #The MLB team table has data for the same game over 2 lines. The following code reformats that so we end up with a single row
     #for each game, combining the player and team variables we need (plus more).
+    #Pre-2020 data spreadsheet formats varied from 2020 onwards, adjustment is included for that
     for(i in 1:length(years)){
       print(years[i])
          myCols <- as.character(read_excel(paste0("MLB-",years[i],"-Player-BoxScore-Dataset.xlsx"), skip=1,n_max = 1, col_names = FALSE))
