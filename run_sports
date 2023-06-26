@@ -1,0 +1,40 @@
+run_sports<-function(sport,years){
+  if(sport=="MLB"){
+    if(!exists("pitchers") | !exists("batters")){
+      data_format(sport,years)
+    }
+
+    c_table<-cor(pitchers[,c(12:20,24,26,30:33)], method = c("pearson", "kendall", "spearman"))
+    print(c_table)
+    #WE COULD REMOVE ONE OF EACH PAIR OF VARIABLES FLAGGED AS HIGHLY CORRELATED BUT THESE ARE LIKELY TO REMAIN THE SAME PAIRS (MANUALLY REMOVED FOR NOW)
+
+    model1<-"W ~ PLAYER + VENUE + HAND...31 + STARTING..PITCHER + IP + H...34 + ER + P....38 + S....39 + BB...40 + SO...41  + HR...45 + QS + HB + CG..SHO + NH + BF + GB + FB + LD" #This is a win/lost model by pitcher
+    if(length(levels(pitchers$STARTING..PITCHER))==1){
+      model1<-"W ~ PLAYER + VENUE + HAND...31 + IP + H...34 + ER + P....38 + S....39 + BB...40 + SO...41  + HR...45 + QS + HB + CG..SHO + NH + BF + GB + FB + LD" #This is a win/lost model by pitcher
+    }
+    model2<-"W ~ PLAYER*POS + VENUE + HAND...10 + B0. + AB + R...13 + H...14 + RBI + BB...16 + X1B+ X2B + X3B + HR...20 + TB + SB + HBP  SO...24  PA  + P....26 + S....27 + PO + A + AVG"
+
+    #Define training dataset
+    lp<-length(levels(pitchers$GAME.ID))/3
+    pitchers_training<-pitchers[pitchers$GAME.ID %in% levels(pitchers$GAME.ID)[c(1:lp)],]
+
+    lb<-length(levels(batters$GAME.ID))/3
+    batters_training<-batters[batters$GAME.ID %in% levels(batters$GAME.ID)[c(1:lp)],]
+
+    #or
+    #pitchers_training <- initial_split(pitchers,
+    #prop = 1/3,
+    #strata = GAME.ID)
+    #batters_training <- initial_split(batters,
+    #prop = 1/3,
+    #strata = GAME.ID)
+
+    m1<-simplify(model1,pitchers_training)
+  #  m2<-simplify(model2,batters_training)
+  } else if (sport=="MBA"){
+    if(!exists("players")){
+      data_format(sport,players)
+    }
+  }
+}
+#Need to remove ERA BECAUSE IT IS A COMPOSITE OF 2 OTHER VARIABLES WE ARE INCLUDING.
