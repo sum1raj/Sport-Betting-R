@@ -1,0 +1,94 @@
+library(tidyverse)
+options(scipen=999)
+library(xgboost)
+library(modelr)
+set.seed(123)
+library(tidymodels)
+library(mlr)
+
+
+# read in data
+newdata <- read_csv('newdata.csv')
+
+## create dummy variables where needed for grouping categorical variables
+library(caret)
+dmy <- dummyVars(" ~ POS", data = newdata)
+trsf <- data.frame(predict(dmy, newdata))
+
+### join data. remove any original variables which dummies have been created for
+vars <- cbind(newdata, trsf) %>% select(-c(POS))
+
+# Remove all objects in R except "vars" dataframe to make space
+rm(list = setdiff(ls(), "vars"))
+gc()
+
+#split into training (70%) and testing set (30%)
+msplit <- initial_split(vars, strata = GAME,ID, prop = .75) 
+train <- training(msplit)
+test <- testing(msplit)
+
+## hyperparam testing
+traintask <- makeRegrTask (data = train,target = "W")
+testtask <- makeRegrTask (data = test,target = "W")
+
+rm(train, test)
+
+#create learner
+lrn <- makeLearner("regr.xgboost")
+lrn$par.vals <- list( objective="reg:squarederror", eval_metric="rmse")
+
+#set parameter space
+params <- makeParamSet( makeDiscreteParam("booster",values = "gbtree"),
+                        makeDiscreteParam("tree_method",values = "hist"),
+                        makeIntegerParam("max_depth",lower = 5L,upper = 12L), 
+                        makeIntegerParam("min_child_weight",lower = 4L,upper = 10L),
+                        makeNumericParam("colsample_bytree",lower = 0.2,upper = 1),
+                        makeNumericParam("subsample",lower = 0.3,upper = 1), 
+                        makeIntegerParam("gamma",lower = 0L,upper = 3L),
+                        makeIntegerParam("alpha",lower = 0L,upper = 3L),
+                        makeIntegerParam("lambda",lower = 0L,upper = 1L),
+                        makeDiscreteParam("nrounds", 
+                                          values = c(100, 200, 300, 400, 500, 600)),
+                        makeDiscreteParam("eta",
+                                          values = c(.01, .03, .05, .075, .1, .15)))
+
+#set resampling strategy
+rdesc <- makeResampleDesc("CV", iters=5L)
+
+#search strategy
+ctrl <- makeTuneControlRandom(maxit = 25L)
+gc()
+#set parallel backend
+library(parallel)
+library(parallelMap) 
+parallelStartSocket(cpus = detectCores())
+
+# parameter tuning
+mytune <- tuneParams(learner = lrn, task = traintask, resampling = rdesc,
+                     par.set = params, control = ctrl, show.info = T)
+
+##Observe rmse results
+sqrt(mytune$y)
+
+#set hyperparameters
+lrn_tune <- setHyperPars(lrn,par.vals = mytune$x)
+
+#train model
+xgmodel <- train(learner = lrn_tune,task = traintask)
+
+## view feature importance
+imp <- mlr::getFeatureImportance(xgmodel)
+view(imp$res)
+
+#predict on test data
+xgpred <- predict(xgmodel,testtask) %>% as.data.frame()
+
+caret::RMSE(xgpred$truth, xgpred$response)
+
+
+## retrain model on full dataset and save for future use
+fulltask <- makeRegrTask (data = vars,target = "W")
+
+xgmodel <- train(learner = lrn_tune,task = fulltask)
+
+saveRDS(xgmodel, file = "MODEL1.rds")
