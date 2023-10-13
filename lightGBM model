@@ -1,0 +1,35 @@
+library(lightgbm)
+set.seed(145)
+
+indexes = createDataPartition(pitchers$GAME.ID, p = 0.8, list = F) #Where p is the proportion of training data
+train = pitchers[indexes, ]
+test = pitchers[-indexes, ]
+
+train_x = train[, -"W"] #Where W is the response variable
+train_x = scale(train_x)[,]
+train_y = train[,"W"]
+test_x = test[, -"W"]
+test_x = scale(test[,-"W"])[,]
+test_y = test[,"W"]
+
+train_df = lgb.Dataset(train_x, label = train_y)
+test_df = lgb.Dataset.create.valid(dtrain, test_x, label = test_y)
+
+lgbm_model1>-lgb.train(
+  params= list ( #TO BE OPTIMISED THROUGH HYPERPARAMETER TUNING
+    objective="regression",
+    metric="12", #12 alludes to MSE statistic, see https://lightgbm.readthedocs.io/en/latest/Parameters.html#metric-parameters for metric options.
+    max_depth = 4,
+    num_leaves = 23,
+    num_iterations = 100,
+    early_stopping_rounds = 50,
+    learning_rate = .5
+  ),
+  valids=list(test=test_df,data=train_df) #These will be the same test and training datasets we cleaned and built for the xgboost models
+)
+
+#Get summary RMSE, R squared and MAE to compare models
+postResample(y_test.yhat_predict_final)
+
+# prediction
+pred_y = predict(lgbm_model1, test_df) 
